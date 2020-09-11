@@ -40,16 +40,23 @@ pushd "$HUNSPELL_SOURCE_DIR"
         windows*)
             load_vsvars
 
-            build_sln "src/win_api/hunspell.sln" "Release_dll|$AUTOBUILD_WIN_VSPLATFORM"
+            build_sln "msvc/Hunspell.sln" "Debug_dll" "$AUTOBUILD_WIN_VSPLATFORM"
+            build_sln "msvc/Hunspell.sln" "Release_dll" "$AUTOBUILD_WIN_VSPLATFORM"
 
+            mkdir -p "$stage/lib/debug"
             mkdir -p "$stage/lib/release"
 
             if [ "$AUTOBUILD_ADDRSIZE" = 32 ]
-            then bitdir=src/win_api/Release_dll/libhunspell/libhunspell
-            else bitdir=src/win_api/x64/Release_dll/libhunspell
+            then 
+                debbitdir=msvc/Debug_dll/libhunspell/libhunspell
+                relbitdir=msvc/Release_dll/libhunspell/libhunspell
+            else
+                debbitdir=msvc/x64/Debug_dll/libhunspell
+                relbitdir=msvc/x64/Release_dll/libhunspell
             fi
 
-            cp "$bitdir"{.dll,.lib,.pdb} "$stage/lib/release"
+            cp "$debbitdir"{.dll,.lib,.pdb,.exp} "$stage/lib/debug"
+            cp "$relbitdir"{.dll,.lib,.pdb,.exp} "$stage/lib/release"
         ;;
         darwin*)
             opts="-m$AUTOBUILD_ADDRSIZE -arch $AUTOBUILD_CONFIGURE_ARCH $LL_BUILD_RELEASE"
@@ -77,7 +84,6 @@ pushd "$HUNSPELL_SOURCE_DIR"
     esac
     mkdir -p "$stage/include/hunspell"
     cp src/hunspell/{*.h,*.hxx} "$stage/include/hunspell"
-    cp src/win_api/hunspelldll.h "$stage/include/hunspell"
     mkdir -p "$stage/LICENSES"
     cp "license.hunspell" "$stage/LICENSES/hunspell.txt"
     cp "license.myspell" "$stage/LICENSES/myspell.txt"

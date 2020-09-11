@@ -4,9 +4,9 @@
     <key>package_description</key>
     <map>
       <key>canonical_repo</key>
-      <string>https://bitbucket.org/lindenlab/3p-libhunspell</string>
+      <string>https://git.alchemyviewer.org/alchemy/thirdparty/3p-libhunspell</string>
       <key>copyright</key>
-      <string>See hunspell.txt</string>
+      <string>LGPL 2.1</string>
       <key>description</key>
       <string>Spell checking library</string>
       <key>license</key>
@@ -111,6 +111,7 @@
           </map>
           <key>manifest</key>
           <array>
+            <string>lib/debug/*</string>
             <string>lib/release/*</string>
           </array>
           <key>name</key>
