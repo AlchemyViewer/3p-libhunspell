@@ -5,4 +5,3 @@ include:
 variables:
   AUTOBUILD_PACKAGE_DIR: hunspell
   AUTOBUILD_PACKAGE_NAME: libhunspell
-  AUTOBUILD_BUILD_ID: $CI_PIPELINE_ID
