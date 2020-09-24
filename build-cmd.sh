@@ -73,13 +73,56 @@ pushd "$HUNSPELL_SOURCE_DIR"
             popd
         ;;
         linux*)
-            opts="-m$AUTOBUILD_ADDRSIZE $LL_BUILD_RELEASE"
-            CFLAGS="$opts" CXXFLAGS="$opts" ./configure --prefix="$stage"
-            make
-            make install
-            mv "$stage/lib" "$stage/release"
-            mkdir -p "$stage/lib"
-            mv "$stage/release" "$stage/lib"
+            # Linux build environment at Linden comes pre-polluted with stuff that can
+            # seriously damage 3rd-party builds.  Environmental garbage you can expect
+            # includes:
+            #
+            #    DISTCC_POTENTIAL_HOSTS     arch           root        CXXFLAGS
+            #    DISTCC_LOCATION            top            branch      CC
+            #    DISTCC_HOSTS               build_name     suffix      CXX
+            #    LSDISTCC_ARGS              repo           prefix      CFLAGS
+            #    cxx_version                AUTOBUILD      SIGN        CPPFLAGS
+            #
+            # So, clear out bits that shouldn't affect our configure-directed build
+            # but which do nonetheless.
+            #
+            unset DISTCC_HOSTS CC CXX CFLAGS CPPFLAGS CXXFLAGS
+        
+            # Default target per --address-size
+            opts="${TARGET_OPTS:--m$AUTOBUILD_ADDRSIZE}"
+            DEBUG_COMMON_FLAGS="$opts -Og -g -fPIC"
+            RELEASE_COMMON_FLAGS="$opts -O3 -g -fPIC -fstack-protector-strong"
+            DEBUG_CFLAGS="$DEBUG_COMMON_FLAGS"
+            RELEASE_CFLAGS="$RELEASE_COMMON_FLAGS"
+            DEBUG_CXXFLAGS="$DEBUG_COMMON_FLAGS -std=c++17"
+            RELEASE_CXXFLAGS="$RELEASE_COMMON_FLAGS -std=c++17"
+            DEBUG_CPPFLAGS="-DPIC"
+            RELEASE_CPPFLAGS="-DPIC -D_FORTIFY_SOURCE=2"
+
+            JOBS=`cat /proc/cpuinfo | grep processor | wc -l`
+
+            # force regenerate autoconf
+            autoreconf -fvi
+
+            CFLAGS="$DEBUG_CFLAGS" CPPFLAGS="$DEBUG_CPPFLAGS" CXXFLAGS="$DEBUG_CXXFLAGS" ./configure --prefix="\${AUTOBUILD_PACKAGES_DIR}" --libdir="\${prefix}/lib/debug"
+            make -j$JOBS
+            make install DESTDIR="$stage"
+
+            # conditionally run unit tests
+            if [ "${DISABLE_UNIT_TESTS:-0}" = "0" ]; then
+                make check
+            fi
+
+            make distclean
+
+            CFLAGS="$RELEASE_CFLAGS" CPPFLAGS="$RELEASE_CPPFLAGS" CXXFLAGS="$RELEASE_CXXFLAGS" ./configure --prefix="\${AUTOBUILD_PACKAGES_DIR}" --libdir="\${prefix}/lib/release"
+            make -j$JOBS
+            make install DESTDIR="$stage"
+
+            # conditionally run unit tests
+            if [ "${DISABLE_UNIT_TESTS:-0}" = "0" ]; then
+                make check
+            fi
         ;;
     esac
     mkdir -p "$stage/include/hunspell"
