@@ -1,7 +1,3 @@
 include:
   - project: 'alchemy/infrastructure/gitlab-ci-config'
-    file: '3p-library-build.yml'
-
-variables:
-  AUTOBUILD_PACKAGE_DIR: hunspell
-  AUTOBUILD_PACKAGE_NAME: libhunspell
+    file: '3p-library.yml'
