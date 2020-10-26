@@ -32,8 +32,7 @@ source_environment_tempfile="$stage/source_environment.sh"
 "$autobuild" source_environment > "$source_environment_tempfile"
 . "$source_environment_tempfile"
 
-build=${AUTOBUILD_BUILD_ID:=0}
-echo "${HUNSPELL_VERSION}.${build}" > "${stage}/VERSION.txt"
+echo "${HUNSPELL_VERSION}" > "${stage}/VERSION.txt"
 
 pushd "$HUNSPELL_SOURCE_DIR"
     case "$AUTOBUILD_PLATFORM" in
