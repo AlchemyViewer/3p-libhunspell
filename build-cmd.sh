@@ -39,23 +39,23 @@ pushd "$HUNSPELL_SOURCE_DIR"
         windows*)
             load_vsvars
 
-            build_sln "msvc/Hunspell.sln" "Debug_dll" "$AUTOBUILD_WIN_VSPLATFORM"
-            build_sln "msvc/Hunspell.sln" "Release_dll" "$AUTOBUILD_WIN_VSPLATFORM"
+            build_sln "msvc/Hunspell.sln" "Debug|$AUTOBUILD_WIN_VSPLATFORM"
+            build_sln "msvc/Hunspell.sln" "Release|$AUTOBUILD_WIN_VSPLATFORM"
 
             mkdir -p "$stage/lib/debug"
             mkdir -p "$stage/lib/release"
 
             if [ "$AUTOBUILD_ADDRSIZE" = 32 ]
             then 
-                debbitdir=msvc/Debug_dll/libhunspell/libhunspell
-                relbitdir=msvc/Release_dll/libhunspell/libhunspell
+                debbitdir=msvc/Debug/libhunspell
+                relbitdir=msvc/Release/libhunspell
             else
-                debbitdir=msvc/x64/Debug_dll/libhunspell
-                relbitdir=msvc/x64/Release_dll/libhunspell
+                debbitdir=msvc/x64/Debug/libhunspell
+                relbitdir=msvc/x64/Release/libhunspell
             fi
 
-            cp "$debbitdir"{.dll,.lib,.pdb,.exp} "$stage/lib/debug"
-            cp "$relbitdir"{.dll,.lib,.pdb,.exp} "$stage/lib/release"
+            cp "$debbitdir".lib "$stage/lib/debug"
+            cp "$relbitdir".lib "$stage/lib/release"
         ;;
         darwin*)
             # Setup osx sdk platform
