@@ -65,8 +65,8 @@
           </map>
           <key>manifest</key>
           <array>
-            <string>lib/debug/*.dylib*</string>
-            <string>lib/release/*.dylib*</string>
+            <string>lib/debug/*.a*</string>
+            <string>lib/release/*.a*</string>
           </array>
           <key>name</key>
           <string>darwin</string>
@@ -89,9 +89,7 @@
           <key>manifest</key>
           <array>
             <string>lib/debug/*.a</string>
-            <string>lib/debug/pkgconfig/*.pc</string>
             <string>lib/release/*.a</string>
-            <string>lib/release/pkgconfig/*.pc</string>
           </array>
           <key>name</key>
           <string>linux</string>
