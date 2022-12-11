@@ -77,16 +77,14 @@ pushd "$HUNSPELL_SOURCE_DIR"
             DEBUG_LDFLAGS="$ARCH_FLAGS $SDK_FLAGS -Wl,-headerpad_max_install_names -Wl,-macos_version_min,$MACOSX_DEPLOYMENT_TARGET"
             RELEASE_LDFLAGS="$ARCH_FLAGS $SDK_FLAGS -Wl,-headerpad_max_install_names -Wl,-macos_version_min,$MACOSX_DEPLOYMENT_TARGET"
 
-            JOBS=`sysctl -n hw.ncpu`
-
             # force regenerate autoconf
             autoreconf -fvi
 
             mkdir -p "build_debug"
             pushd "build_debug"
                 CFLAGS="$DEBUG_CFLAGS" CPPFLAGS="$DEBUG_CPPFLAGS" CXXFLAGS="$DEBUG_CXXFLAGS" LDFLAGS="$DEBUG_LDFLAGS" \
-                    ../configure --prefix="\${AUTOBUILD_PACKAGES_DIR}" --libdir="\${prefix}/lib/debug"
-                make -j$JOBS
+                    ../configure --prefix="\${AUTOBUILD_PACKAGES_DIR}" --libdir="\${prefix}/lib/debug" --enable-static --disable-shared
+                make -j$AUTOBUILD_CPU_COUNT
                 make install DESTDIR="$stage"
 
                 # conditionally run unit tests
@@ -98,26 +96,14 @@ pushd "$HUNSPELL_SOURCE_DIR"
             mkdir -p "build_release"
             pushd "build_release"
                 CFLAGS="$RELEASE_CFLAGS" CPPFLAGS="$RELEASE_CPPFLAGS" CXXFLAGS="$RELEASE_CXXFLAGS" LDFLAGS="$RELEASE_LDFLAGS" \
-                    ../configure --prefix="\${AUTOBUILD_PACKAGES_DIR}" --libdir="\${prefix}/lib/release"
-                make -j$JOBS
+                    ../configure --prefix="\${AUTOBUILD_PACKAGES_DIR}" --libdir="\${prefix}/lib/release" --enable-static --disable-shared
+                make -j$AUTOBUILD_CPU_COUNT
                 make install DESTDIR="$stage"
 
                 # conditionally run unit tests
                 if [ "${DISABLE_UNIT_TESTS:-0}" = "0" ]; then
                     make check
                 fi
-            popd
-
-            pushd "$stage/lib/debug"
-                fix_dylib_id libhunspell-1*.dylib
-                dsymutil libhunspell-*.*.*.dylib
-                strip -x -S libhunspell-*.*.*.dylib
-            popd
-
-            pushd "$stage/lib/release"
-                fix_dylib_id libhunspell-1*.dylib
-                dsymutil libhunspell-*.*.*.dylib
-                strip -x -S libhunspell-*.*.*.dylib
             popd
         ;;
         linux*)
@@ -132,16 +118,14 @@ pushd "$HUNSPELL_SOURCE_DIR"
             DEBUG_CPPFLAGS="-DPIC"
             RELEASE_CPPFLAGS="-DPIC -D_FORTIFY_SOURCE=2"
 
-            JOBS=`cat /proc/cpuinfo | grep processor | wc -l`
-
             # force regenerate autoconf
             autoreconf -fvi
 
             mkdir -p "build_debug"
             pushd "build_debug"
                 CFLAGS="$DEBUG_CFLAGS" CPPFLAGS="$DEBUG_CPPFLAGS" CXXFLAGS="$DEBUG_CXXFLAGS" \
-                    ../configure --prefix="\${AUTOBUILD_PACKAGES_DIR}" --libdir="\${prefix}/lib/debug"
-                make -j$JOBS
+                    ../configure --prefix="\${AUTOBUILD_PACKAGES_DIR}" --libdir="\${prefix}/lib/debug" --enable-static --disable-shared
+                make -j$AUTOBUILD_CPU_COUNT
                 make install DESTDIR="$stage"
 
                 # conditionally run unit tests
@@ -153,8 +137,8 @@ pushd "$HUNSPELL_SOURCE_DIR"
             mkdir -p "build_release"
             pushd "build_release"
                 CFLAGS="$RELEASE_CFLAGS" CPPFLAGS="$RELEASE_CPPFLAGS" CXXFLAGS="$RELEASE_CXXFLAGS" \
-                    ../configure --prefix="\${AUTOBUILD_PACKAGES_DIR}" --libdir="\${prefix}/lib/release"
-                make -j$JOBS
+                    ../configure --prefix="\${AUTOBUILD_PACKAGES_DIR}" --libdir="\${prefix}/lib/release" --enable-static --disable-shared
+                make -j$AUTOBUILD_CPU_COUNT
                 make install DESTDIR="$stage"
 
                 # conditionally run unit tests
