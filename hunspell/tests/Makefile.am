@@ -76,6 +76,7 @@ checkcompounddup.dic \
 checkcompoundtriple.dic \
 simplifiedtriple.dic \
 checkcompoundrep.dic \
+checkcompoundrep2.dic \
 checkcompoundcase2.dic \
 checkcompoundcaseutf.dic \
 checkcompoundpattern.dic \
@@ -136,7 +137,8 @@ nepali.dic \
 hu.dic \
 warn.dic \
 timelimit.dic \
-ignoresug.dic
+ignoresug.dic \
+limit-multiple-compounding.dic
 
 clean-local:
 	-rm -rf testSubDir
@@ -391,6 +393,9 @@ checkcompoundrep.aff \
 checkcompoundrep.dic \
 checkcompoundrep.good \
 checkcompoundrep.wrong \
+checkcompoundrep2.aff \
+checkcompoundrep2.dic \
+checkcompoundrep2.good \
 checkcompoundtriple.aff \
 checkcompoundtriple.dic \
 checkcompoundtriple.good \
@@ -653,5 +658,9 @@ ignoresug.aff \
 ignoresug.dic \
 ignoresug.good \
 ignoresug.morph \
+limit-multiple-compounding.aff \
+limit-multiple-compounding.dic \
+limit-multiple-compounding.good \
+limit-multiple-compounding.wrong \
 \
 utf8_nonbmp.test
