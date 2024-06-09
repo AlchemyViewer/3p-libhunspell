@@ -39,8 +39,8 @@ pushd "$HUNSPELL_SOURCE_DIR"
         windows*)
             load_vsvars
 
-            build_sln "msvc/Hunspell.sln" "Debug|$AUTOBUILD_WIN_VSPLATFORM"
-            build_sln "msvc/Hunspell.sln" "Release|$AUTOBUILD_WIN_VSPLATFORM"
+            MSBuild $(cygpath -w 'msvc/Hunspell.sln') /p:Configuration=Debug /p:Platform=$AUTOBUILD_WIN_VSPLATFORM
+            MSBuild $(cygpath -w 'msvc/Hunspell.sln') /p:Configuration=Release /p:Platform=$AUTOBUILD_WIN_VSPLATFORM
 
             mkdir -p "$stage/lib/debug"
             mkdir -p "$stage/lib/release"
