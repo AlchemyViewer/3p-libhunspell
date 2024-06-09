@@ -58,44 +58,23 @@ pushd "$HUNSPELL_SOURCE_DIR"
             cp "$relbitdir".lib "$stage/lib/release"
         ;;
         darwin*)
-            # Setup osx sdk platform
-            SDKNAME="macosx"
-            export SDKROOT=$(xcodebuild -version -sdk ${SDKNAME} Path)
-            export MACOSX_DEPLOYMENT_TARGET=10.15
-
             # Setup build flags
-            ARCH_FLAGS="-arch x86_64"
-            SDK_FLAGS="-mmacosx-version-min=${MACOSX_DEPLOYMENT_TARGET} -isysroot ${SDKROOT}"
-            DEBUG_COMMON_FLAGS="$ARCH_FLAGS $SDK_FLAGS -Og -g -msse4.2 -fPIC -DPIC"
-            RELEASE_COMMON_FLAGS="$ARCH_FLAGS $SDK_FLAGS -Ofast -ffast-math -g -msse4.2 -fPIC -DPIC -fstack-protector-strong"
-            DEBUG_CFLAGS="$DEBUG_COMMON_FLAGS"
-            RELEASE_CFLAGS="$RELEASE_COMMON_FLAGS"
-            DEBUG_CXXFLAGS="$DEBUG_COMMON_FLAGS -std=c++17"
-            RELEASE_CXXFLAGS="$RELEASE_COMMON_FLAGS -std=c++17"
-            DEBUG_CPPFLAGS="-DPIC"
-            RELEASE_CPPFLAGS="-DPIC"
-            DEBUG_LDFLAGS="$ARCH_FLAGS $SDK_FLAGS -Wl,-headerpad_max_install_names -Wl,-macos_version_min,$MACOSX_DEPLOYMENT_TARGET"
-            RELEASE_LDFLAGS="$ARCH_FLAGS $SDK_FLAGS -Wl,-headerpad_max_install_names -Wl,-macos_version_min,$MACOSX_DEPLOYMENT_TARGET"
+            C_OPTS_X86="-arch x86_64 $LL_BUILD_RELEASE_CFLAGS"
+            C_OPTS_ARM64="-arch arm64 $LL_BUILD_RELEASE_CFLAGS"
+            CXX_OPTS_X86="-arch x86_64 $LL_BUILD_RELEASE_CXXFLAGS"
+            CXX_OPTS_ARM64="-arch arm64 $LL_BUILD_RELEASE_CXXFLAGS"
+            LINK_OPTS_X86="-arch x86_64 $LL_BUILD_RELEASE_LINKER"
+            LINK_OPTS_ARM64="-arch arm64 $LL_BUILD_RELEASE_LINKER"
+
+            # deploy target
+            export MACOSX_DEPLOYMENT_TARGET=${LL_BUILD_DARWIN_BASE_DEPLOY_TARGET}
 
             # force regenerate autoconf
             autoreconf -fvi
 
-            mkdir -p "build_debug"
-            pushd "build_debug"
-                CFLAGS="$DEBUG_CFLAGS" CPPFLAGS="$DEBUG_CPPFLAGS" CXXFLAGS="$DEBUG_CXXFLAGS" LDFLAGS="$DEBUG_LDFLAGS" \
-                    ../configure --prefix="\${AUTOBUILD_PACKAGES_DIR}" --libdir="\${prefix}/lib/debug" --enable-static --disable-shared
-                make -j$AUTOBUILD_CPU_COUNT
-                make install DESTDIR="$stage"
-
-                # conditionally run unit tests
-                if [ "${DISABLE_UNIT_TESTS:-0}" = "0" ]; then
-                    make check
-                fi
-            popd
-
             mkdir -p "build_release"
             pushd "build_release"
-                CFLAGS="$RELEASE_CFLAGS" CPPFLAGS="$RELEASE_CPPFLAGS" CXXFLAGS="$RELEASE_CXXFLAGS" LDFLAGS="$RELEASE_LDFLAGS" \
+                CFLAGS="$C_OPTS_X86" CXXFLAGS="$CXX_OPTS_X86" LDFLAGS="$LINK_OPTS_X86" \
                     ../configure --prefix="\${AUTOBUILD_PACKAGES_DIR}" --libdir="\${prefix}/lib/release" --enable-static --disable-shared
                 make -j$AUTOBUILD_CPU_COUNT
                 make install DESTDIR="$stage"
@@ -107,36 +86,31 @@ pushd "$HUNSPELL_SOURCE_DIR"
             popd
         ;;
         linux*)
+            # Linux build environment at Linden comes pre-polluted with stuff that can
+            # seriously damage 3rd-party builds.  Environmental garbage you can expect
+            # includes:
+            #
+            #    DISTCC_POTENTIAL_HOSTS     arch           root        CXXFLAGS
+            #    DISTCC_LOCATION            top            branch      CC
+            #    DISTCC_HOSTS               build_name     suffix      CXX
+            #    LSDISTCC_ARGS              repo           prefix      CFLAGS
+            #    cxx_version                AUTOBUILD      SIGN        CPPFLAGS
+            #
+            # So, clear out bits that shouldn't affect our configure-directed build
+            # but which do nonetheless.
+            #
+            unset DISTCC_HOSTS CFLAGS CPPFLAGS CXXFLAGS
+
             # Default target per --address-size
-            opts="${TARGET_OPTS:--m$AUTOBUILD_ADDRSIZE}"
-            DEBUG_COMMON_FLAGS="$opts -Og -g -fPIC"
-            RELEASE_COMMON_FLAGS="$opts -O3 -g -fPIC -fstack-protector-strong -DPIC -D_FORTIFY_SOURCE=2"
-            DEBUG_CFLAGS="$DEBUG_COMMON_FLAGS"
-            RELEASE_CFLAGS="$RELEASE_COMMON_FLAGS"
-            DEBUG_CXXFLAGS="$DEBUG_COMMON_FLAGS -std=c++17"
-            RELEASE_CXXFLAGS="$RELEASE_COMMON_FLAGS -std=c++17"
-            DEBUG_CPPFLAGS="-DPIC"
-            RELEASE_CPPFLAGS="-DPIC -D_FORTIFY_SOURCE=2"
+            opts_c="${TARGET_OPTS:--m$AUTOBUILD_ADDRSIZE $LL_BUILD_RELEASE_CFLAGS}"
+            opts_cxx="${TARGET_OPTS:--m$AUTOBUILD_ADDRSIZE $LL_BUILD_RELEASE_CXXFLAGS}"
 
             # force regenerate autoconf
             autoreconf -fvi
 
-            mkdir -p "build_debug"
-            pushd "build_debug"
-                CFLAGS="$DEBUG_CFLAGS" CPPFLAGS="$DEBUG_CPPFLAGS" CXXFLAGS="$DEBUG_CXXFLAGS" \
-                    ../configure --prefix="\${AUTOBUILD_PACKAGES_DIR}" --libdir="\${prefix}/lib/debug" --enable-static --disable-shared
-                make -j$AUTOBUILD_CPU_COUNT
-                make install DESTDIR="$stage"
-
-                # conditionally run unit tests
-                if [ "${DISABLE_UNIT_TESTS:-0}" = "0" ]; then
-                    make check
-                fi
-            popd
-
             mkdir -p "build_release"
             pushd "build_release"
-                CFLAGS="$RELEASE_CFLAGS" CPPFLAGS="$RELEASE_CPPFLAGS" CXXFLAGS="$RELEASE_CXXFLAGS" \
+                CFLAGS="$opts_c" CXXFLAGS="$opts_cxx" \
                     ../configure --prefix="\${AUTOBUILD_PACKAGES_DIR}" --libdir="\${prefix}/lib/release" --enable-static --disable-shared
                 make -j$AUTOBUILD_CPU_COUNT
                 make install DESTDIR="$stage"
