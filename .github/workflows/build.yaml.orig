@@ -1,0 +1,56 @@
+name: Build
+<<<<<<< HEAD
+on: [push]
+=======
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags: [v*]
+>>>>>>> e108bfeadc5410caa382e519aa4ef67d5a5d71f5
+jobs:
+  build:
+    strategy:
+      matrix:
+<<<<<<< HEAD
+        os: [windows-2022, macos-14, ubuntu-22.04]
+        addrsize: ["64"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: AlchemyViewer/action-autobuild@v4
+        with:
+          addrsize: ${{ matrix.addrsize }}
+          build-variables-repo: alchemyviewer/build-variables
+          build-variables-ref: alchemy
+          apt-packages: autoconf automake autopoint gettext
+          brew-packages: autoconf automake gettext libtool
+=======
+        os: [windows-2022, macos-15, ubuntu-22.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Setup Homebrew Packages
+        if: ${{ runner.os == 'macOS' }}
+        shell: bash
+        run: brew install autoconf automake gettext libtool
+      - name: Setup Apt Packages
+        if: ${{ runner.os == 'Linux' }}
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get -y install autoconf automake autopoint gettext
+      - uses: secondlife/action-autobuild@v5
+>>>>>>> e108bfeadc5410caa382e519aa4ef67d5a5d71f5
+  release:
+    needs: build
+    runs-on: [ubuntu-latest]
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+<<<<<<< HEAD
+      - uses: alchemyviewer/action-autobuild-release@v4
+        with:
+          public: true
+=======
+      - uses: secondlife/action-autobuild-release@v3
+        with:
+          public: true
+>>>>>>> e108bfeadc5410caa382e519aa4ef67d5a5d71f5

@@ -9,6 +9,7 @@ jobs:
     strategy:
       matrix:
         os: [windows-2022, macos-15, ubuntu-22.04]
+        addrsize: ["64"]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: AlchemyViewer/action-autobuild@v5
@@ -16,7 +17,6 @@ jobs:
           addrsize: ${{ matrix.addrsize }}
           apt-packages: autoconf automake autopoint gettext
           brew-packages: autoconf automake gettext libtool
-
   release:
     needs: build
     runs-on: [ubuntu-latest]
