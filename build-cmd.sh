@@ -10,10 +10,8 @@ set -e
 set -u
 
 HUNSPELL_SOURCE_DIR="hunspell"
-# Look in configure script for line PACKAGE_VERSION='x.y.z', then capture
-# everything between single quotes.
-HUNSPELL_VERSION="$(expr "$(grep '^PACKAGE_VERSION=' "$HUNSPELL_SOURCE_DIR/configure")" \
-                         : ".*'\(.*\)'")"
+# version will be (e.g.) "1.4.0"
+HUNSPELL_VERSION=`sed -n -E 's/#define PACKAGE_VERSION "([0-9])[.]([0-9])[.]([0-9])".*/\1.\2.\3/p' "hunspell/msvc/config.h"`
 
 if [ -z "$AUTOBUILD" ] ; then
     exit 1
@@ -32,7 +30,13 @@ source_environment_tempfile="$stage/source_environment.sh"
 "$autobuild" source_environment > "$source_environment_tempfile"
 . "$source_environment_tempfile"
 
-echo "${HUNSPELL_VERSION}" > "${stage}/VERSION.txt"
+# remove_cxxstd apply_patch
+source "$(dirname "$AUTOBUILD_VARIABLES_FILE")/functions"
+
+build=${AUTOBUILD_BUILD_ID:=0}
+echo "${HUNSPELL_VERSION}.${build}" > "${stage}/VERSION.txt"
+
+apply_patch "patches/0001-Fix-MSVC-solutions-for-VS2022.patch" "hunspell"
 
 pushd "$HUNSPELL_SOURCE_DIR"
     case "$AUTOBUILD_PLATFORM" in
@@ -59,65 +63,56 @@ pushd "$HUNSPELL_SOURCE_DIR"
         ;;
         darwin*)
             # Setup build flags
-            C_OPTS_X86="-arch x86_64 $LL_BUILD_RELEASE_CFLAGS"
-            C_OPTS_ARM64="-arch arm64 $LL_BUILD_RELEASE_CFLAGS"
-            CXX_OPTS_X86="-arch x86_64 $LL_BUILD_RELEASE_CXXFLAGS"
-            CXX_OPTS_ARM64="-arch arm64 $LL_BUILD_RELEASE_CXXFLAGS"
-            LINK_OPTS_X86="-arch x86_64 $LL_BUILD_RELEASE_LINKER"
-            LINK_OPTS_ARM64="-arch arm64 $LL_BUILD_RELEASE_LINKER"
-
-            # deploy target
-            export MACOSX_DEPLOYMENT_TARGET=${LL_BUILD_DARWIN_BASE_DEPLOY_TARGET}
+            opts="${TARGET_OPTS:--arch $AUTOBUILD_CONFIGURE_ARCH $LL_BUILD_RELEASE}"
+            plainopts="$(remove_cxxstd $opts)"
 
             # force regenerate autoconf
             autoreconf -fvi
 
-            mkdir -p "build_release"
-            pushd "build_release"
-                CFLAGS="$C_OPTS_X86" CXXFLAGS="$CXX_OPTS_X86" LDFLAGS="$LINK_OPTS_X86" \
-                    ../configure --prefix="\${AUTOBUILD_PACKAGES_DIR}" --libdir="\${prefix}/lib/release" --enable-static --disable-shared
-                make -j$AUTOBUILD_CPU_COUNT
-                make install DESTDIR="$stage"
+            export MACOSX_DEPLOYMENT_TARGET="$LL_BUILD_DARWIN_DEPLOY_TARGET"
 
-                # conditionally run unit tests
-                if [ "${DISABLE_UNIT_TESTS:-0}" = "0" ]; then
-                    make check
-                fi
-            popd
+            for arch in x86_64 arm64 ; do
+                ARCH_ARGS="-arch $arch"
+                opts="${TARGET_OPTS:-$ARCH_ARGS $LL_BUILD_RELEASE}"
+                cc_opts="$(remove_cxxstd $opts)"
+                ld_opts="$ARCH_ARGS"
+
+                mkdir -p "build_$arch"
+                pushd "build_$arch"
+                    CFLAGS="$cc_opts" \
+                    CXXFLAGS="$opts" \
+                    LDFLAGS="$ld_opts" \
+                    ../configure --prefix="$stage" --libdir="$stage/lib/release/$arch" --enable-static --disable-shared --host=$arch-apple-darwin
+                    make -j$AUTOBUILD_CPU_COUNT
+                    make install
+
+                    # conditionally run unit tests
+                    if [ "${DISABLE_UNIT_TESTS:-0}" = "0" ]; then
+                        make check -j$AUTOBUILD_CPU_COUNT
+                    fi
+                popd
+            done
+
+            lipo -create -output ${stage}/lib/release/libhunspell-1.7.a ${stage}/lib/release/x86_64/libhunspell-1.7.a ${stage}/lib/release/arm64/libhunspell-1.7.a
         ;;
         linux*)
-            # Linux build environment at Linden comes pre-polluted with stuff that can
-            # seriously damage 3rd-party builds.  Environmental garbage you can expect
-            # includes:
-            #
-            #    DISTCC_POTENTIAL_HOSTS     arch           root        CXXFLAGS
-            #    DISTCC_LOCATION            top            branch      CC
-            #    DISTCC_HOSTS               build_name     suffix      CXX
-            #    LSDISTCC_ARGS              repo           prefix      CFLAGS
-            #    cxx_version                AUTOBUILD      SIGN        CPPFLAGS
-            #
-            # So, clear out bits that shouldn't affect our configure-directed build
-            # but which do nonetheless.
-            #
-            unset DISTCC_HOSTS CFLAGS CPPFLAGS CXXFLAGS
-
             # Default target per --address-size
-            opts_c="${TARGET_OPTS:--m$AUTOBUILD_ADDRSIZE $LL_BUILD_RELEASE_CFLAGS}"
-            opts_cxx="${TARGET_OPTS:--m$AUTOBUILD_ADDRSIZE $LL_BUILD_RELEASE_CXXFLAGS}"
+            opts="-m$AUTOBUILD_ADDRSIZE $LL_BUILD_RELEASE"
+            plainopts="$(remove_cxxstd $opts)"
 
             # force regenerate autoconf
             autoreconf -fvi
 
             mkdir -p "build_release"
             pushd "build_release"
-                CFLAGS="$opts_c" CXXFLAGS="$opts_cxx" \
-                    ../configure --prefix="\${AUTOBUILD_PACKAGES_DIR}" --libdir="\${prefix}/lib/release" --enable-static --disable-shared
+                CFLAGS="$plainopts" CXXFLAGS="$opts" \
+                    ../configure --prefix="$stage" --libdir="$stage/lib/release" --enable-static --disable-shared
                 make -j$AUTOBUILD_CPU_COUNT
-                make install DESTDIR="$stage"
+                make install
 
                 # conditionally run unit tests
                 if [ "${DISABLE_UNIT_TESTS:-0}" = "0" ]; then
-                    make check
+                    make check -j$AUTOBUILD_CPU_COUNT
                 fi
             popd
         ;;
